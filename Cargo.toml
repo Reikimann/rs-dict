@@ -1,0 +1,11 @@
+[package]
+name = "rs-dict"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4.5.1", features = ["derive"] }
+lazy_static = "1.4.0"
+reqwest = { version = "0.11.24", features = ["blocking"] }
+scraper = "0.18.1"
+tokio = { version = "1.36.0", features = ["full"] }
