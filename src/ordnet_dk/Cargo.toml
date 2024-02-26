@@ -1,0 +1,12 @@
+[package]
+name = "ordnet_dk"
+version = "0.1.0"
+edition = "2021"
+description = "A web scraper for a Danish web dictionary."
+license = "MIT"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+reqwest = "0.11.24"
+tokio = { version = "1.36.0", features = ["full"] }

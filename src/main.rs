@@ -1,63 +1,95 @@
-// use scraper::{Html, Selector};
-use reqwest::{Client, Error, StatusCode};
+// Reqwest and scraping
+use reqwest::{Client, StatusCode};
+use scraper::{Html, Selector};
 
+// CLI and arg parsing
+use std::{
+    process,
+    fmt::Write,
+};
 mod args;
 use args::CliArgs;
 use clap::Parser;
+use colored::Colorize;
+
+// Other
+use ordnet_dk::requests::get_request;
+mod utils;
+use utils::{uppercase_first_letter, trim_whitespace};
 
 lazy_static::lazy_static! {
     static ref HTTP_CLIENT: Client = Client::new();
 }
 
-async fn get_request(url: &str) -> Result<String, Error> {
-    let response = HTTP_CLIENT.get(url).send().await?;
-    let status: StatusCode = response.status();
-
-    if status.is_success() {
-        return Ok(response.text().await?);
-    }
-    Err(response.error_for_status_ref().unwrap_err())
-}
-
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = CliArgs::parse();
+    let query_word = args.query;
 
-    let query_word = args.query.unwrap_or_default();
-    let query_url: String = "https://ordnet.dk/ddo/ordbog?query=".to_string() + &query_word;
-    println!("{}\n", &query_url);
+    let response: String = match get_request(&HTTP_CLIENT, &query_word).await {
+        Ok(body) => body,
+        Err(err) => {
+            // TODO: Use human-panic.
+            if err.status() == Some(StatusCode::NOT_FOUND) {
+                eprintln!("Word doesn't exist.");
+            }
+            if err.is_connect() {
+                eprintln!("Connection Error.");
+            }
+            process::exit(1)
+        }
+    };
 
-    match get_request(&query_url).await {
-        Ok(body) => println!("{:#?}", body),
-        Err(err) => eprintln!("Error: {}", err),
+    let document = Html::parse_document(&response);
+    // Make these constants and make a scraping/selector module in ordnet_dk
+    let selector_match = Selector::parse("div.definitionBoxTop > span.match").unwrap();
+    let selector_glossing = Selector::parse("div.definitionBoxTop > span.tekstmedium.allow-glossing").unwrap();
+    let selector_inflection = Selector::parse("div#id-boj > span.tekstmedium.allow-glossing").unwrap();
+    let selector_pronounciation = Selector::parse("div#id-udt > span.tekstmedium.allow-glossing > .lydskrift").unwrap();
+    let selector_etymologi = Selector::parse("div#id-ety > span.tekstmedium.allow-glossing").unwrap();
+
+    let mut output = String::new();
+
+    // Remember to check if the inner_html is empty and what text to display instead.
+    let result_match: String = document
+        .select(&selector_match)
+        .map(|el| el.inner_html())
+        .collect::<Vec<_>>()
+        .join("/");
+
+    write!(output, "{}\n", uppercase_first_letter(&result_match).blue().bold())?;
+
+
+    // Ordklasse og køn
+    for element in document.select(&selector_glossing) {
+        let inner_html = element.inner_html();
+        write!(output, "{}\n", inner_html)?;
     }
+
+    // Bøjninger
+    for element in document.select(&selector_inflection) {
+        let text = element.text().collect::<Vec<_>>().join("");
+        let header = "Bøjning:".blue().bold();
+        write!(output, "\n{}\n{}\n", header, text)?;
+    }
+
+    // Udtale
+    for element in document.select(&selector_pronounciation) {
+        let text = element.text().collect::<Vec<_>>().join("");
+        let header = "Udtale:".blue().bold();
+        write!(output, "\n{}\n{}\n", header, text)?;
+    }
+
+    // Etymologi
+    for element in document.select(&selector_etymologi) {
+        let text = element.text().collect::<Vec<_>>().join("");
+        let trimmed_text = trim_whitespace(&text);
+        let header = "Udtale:".blue().bold();
+        write!(output, "\n{}\n{}.\n", header, uppercase_first_letter(&trimmed_text))?;
+    }
+
+
+    println!("{}", output);
+
+    Ok(())
 }
-
-
-// Synchronous
-// use scraper::{Html, Selector};
-// use reqwest::Error;
-// use reqwest::blocking::{Client, Response};
-
-// lazy_static::lazy_static! {
-//     static ref HTTP_CLIENT: Client = Client::new();
-// }
-
-// // May return a string
-// fn get_request(url: &str) -> Result<String, Error> {
-//     let http_result: Result<Response, Error> = HTTP_CLIENT.get(url).send();
-
-//     if http_result.is_ok() {
-//         let body = http_result?.text()?;
-//         println!("Success! Body:\n{}", body);
-//         Ok(body)
-//     } else {
-//         Err(http_result?.error_for_status_ref().unwrap_err())
-//     }
-// }
-
-// fn main() {
-//     let res = get_request("https://ordnet.dk/ddo/ordbog?query=test");
-//     println!("Body: {:#?}", res);
-// }
-

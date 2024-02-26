@@ -9,8 +9,8 @@ use clap:: {
 /// A Rust powered Ordnet.dk webscraper
 pub struct CliArgs {
     /// Word to look up
-    #[arg(short, long, value_parser = validate_search_query)]
-    pub query: Option<String>,
+    #[arg(value_parser = validate_search_query)]
+    pub query: String,
 }
 
 fn validate_search_query(arg: &str) -> Result<String, String> {

@@ -1,11 +1,14 @@
+workspace = { members = ["src/ordnet_dk"] }
 [package]
 name = "rs-dict"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2021"
 
 [dependencies]
 clap = { version = "4.5.1", features = ["derive"] }
 lazy_static = "1.4.0"
-reqwest = { version = "0.11.24", features = ["blocking"] }
+reqwest = "0.11.24"
 scraper = "0.18.1"
 tokio = { version = "1.36.0", features = ["full"] }
+ordnet_dk = { path = "./src/ordnet_dk" }
+colored = "2.1.0"
