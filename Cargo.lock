@@ -769,6 +769,7 @@ name = "ordnet_dk"
 version = "0.1.0"
 dependencies = [
  "reqwest",
+ "scraper",
  "tokio",
 ]
 
