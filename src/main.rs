@@ -1,6 +1,12 @@
 // Reqwest and scraping
 use reqwest::{Client, StatusCode};
-use scraper::{Html, Selector};
+use scraper::{
+    Html,
+    Selector,
+    Element,
+    selector::CssLocalName,
+    CaseSensitivity,
+};
 
 // CLI and arg parsing
 use std::{
@@ -45,7 +51,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let selector_match = Selector::parse("div.definitionBoxTop > span.match").unwrap();
     let selector_glossing = Selector::parse("div.definitionBoxTop > span.tekstmedium.allow-glossing").unwrap();
     let selector_inflection = Selector::parse("div#id-boj > span.tekstmedium.allow-glossing").unwrap();
-    let selector_pronounciation = Selector::parse("div#id-udt > span.tekstmedium.allow-glossing > .lydskrift").unwrap();
+    let selector_pronounciation = Selector::parse("div#id-udt > span.tekstmedium.allow-glossing").unwrap();
     let selector_etymologi = Selector::parse("div#id-ety > span.tekstmedium.allow-glossing").unwrap();
 
     let mut output = String::new();
@@ -59,32 +65,92 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     write!(output, "{}\n", uppercase_first_letter(&result_match).blue().bold())?;
 
-
     // Ordklasse og køn
-    for element in document.select(&selector_glossing) {
-        let inner_html = element.inner_html();
-        write!(output, "{}\n", inner_html)?;
-    }
+    let result_glossing: String = document
+        .select(&selector_glossing)
+        .map(|el| el.inner_html())
+        .collect::<Vec<_>>()
+        .join("");
+
+    write!(output, "{}\n", uppercase_first_letter(&result_glossing))?;
 
     // Bøjninger
-    for element in document.select(&selector_inflection) {
-        let text = element.text().collect::<Vec<_>>().join("");
-        let header = "Bøjning:".blue().bold();
-        write!(output, "\n{}\n{}\n", header, text)?;
-    }
+    let result_inflection: String = document
+        .select(&selector_inflection)
+        .map(|el| {
+            el.text().collect::<String>()
+        })
+        .collect::<Vec<_>>()
+        .join("");
+
+    let header = "Bøjninger:".blue().bold();
+    write!(output, "\n{}\n{}\n", header, &result_inflection)?;
 
     // Udtale
-    for element in document.select(&selector_pronounciation) {
-        let text = element.text().collect::<Vec<_>>().join("");
-        let header = "Udtale:".blue().bold();
-        write!(output, "\n{}\n{}\n", header, text)?;
-    }
+    // let result_pronounciation = document
+    //     .select(&selector_pronounciation)
+    //     .map(|el| {
+    //         // el.text()
+    //         let text = el.text().collect::<String>();
+    //         let class = CssLocalName("dividerDouble".into());
+    //         if el.has_class(&class, CaseSensitivity::CaseSensitive) {
+    //             format!(" eller {}", text)
+    //         } else {
+    //             format!(" {}", text)
+    //         }
+    //     })
+    //     .collect::<Vec<_>>()
+    //     .join("");
+
+    let divider_class = CssLocalName("dividerDouble".into());
+    let lydskrift_class = CssLocalName("lydskrift".into());
+    let selector_span = Selector::parse("span").unwrap();
+
+    let result_pronounciation = document
+        .select(&selector_pronounciation)
+        .map(|el| el.inner_html())
+        .map(|el| {
+            let fragment = Html::parse_fragment(&el);
+
+            let inner_texts: Vec<_> = fragment
+                .select(&selector_span)
+                .map(|el| {
+                    let mut text = el.text().collect::<String>()
+                        .replace("[", "").to_string()
+                        .replace("]", "").to_string();
+
+                    if !text.is_empty() {
+                        text = text.replace("\u{a0}", "").to_string();
+                        if el.has_class(&divider_class, CaseSensitivity::CaseSensitive) {
+                            format!(" eller {}", text)
+                        } else if el.has_class(&lydskrift_class, CaseSensitivity::CaseSensitive) {
+                            format!(" [{}]", text)
+                        } else {
+                            format!(" {}", text)
+                        }
+                    } else {
+                        String::new()
+                    }
+                })
+                .collect();
+
+            inner_texts.join("")
+        })
+        .collect::<Vec<_>>()
+        .join("");
+    // for element in document.select(&selector_pronounciation) {
+    //     let text = element.text().collect::<Vec<_>>().join("");
+    //     let header = "Udtale:".blue().bold();
+    //     write!(output, "\n{}\n{}\n", header, text)?;
+    // }
+    let header = "Udtale:".blue().bold();
+    write!(output, "\n{}\n{}\n", header, trim_whitespace(&result_pronounciation))?;
 
     // Etymologi
     for element in document.select(&selector_etymologi) {
         let text = element.text().collect::<Vec<_>>().join("");
         let trimmed_text = trim_whitespace(&text);
-        let header = "Udtale:".blue().bold();
+        let header = "Oprindelse:".blue().bold();
         write!(output, "\n{}\n{}.\n", header, uppercase_first_letter(&trimmed_text))?;
     }
 
