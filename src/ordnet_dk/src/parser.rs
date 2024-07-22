@@ -20,7 +20,7 @@ pub fn get_match(doc: &Html) -> String {
         .collect::<Vec<_>>()
         .join("/");
 
-    return trim_whitespace(&result_match);
+    trim_whitespace(&result_match)
 }
 
 pub fn get_glossing(doc: &Html) -> String {
@@ -43,7 +43,7 @@ pub fn get_glossing(doc: &Html) -> String {
         .collect::<Vec<_>>()
         .join("");
 
-    return trim_whitespace(&result_glossing);
+    trim_whitespace(&result_glossing)
 }
 
 pub fn get_inflection(doc: &Html) -> String {
@@ -57,7 +57,7 @@ pub fn get_inflection(doc: &Html) -> String {
         .collect::<Vec<_>>()
         .join("");
 
-    return trim_whitespace(&result_inflection);
+    trim_whitespace(&result_inflection)
 }
 
 pub fn get_pronounciation(doc: &Html) -> String {
@@ -100,7 +100,7 @@ pub fn get_pronounciation(doc: &Html) -> String {
         .collect::<Vec<_>>()
         .join("");
 
-    return trim_whitespace(&result_pronounciation);
+    trim_whitespace(&result_pronounciation)
 }
 
 pub fn get_etymology(doc: &Html) -> String {
@@ -114,5 +114,5 @@ pub fn get_etymology(doc: &Html) -> String {
         .collect::<Vec<_>>()
         .join("");
 
-    return trim_whitespace(&result_etymology);
+    trim_whitespace(&result_etymology)
 }
